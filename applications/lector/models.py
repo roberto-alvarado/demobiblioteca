@@ -1,20 +1,19 @@
 from django.db import models
+from django.db.models.signals import post_delete
 
 #from local apps
 from applications.libro.models import Libro
+from applications.autor.models import Persona
 
 #from managers
 from .managers import PrestamoManager
+from .signals import update_libro_stock
 
-class Lector(models.Model):
-    nombres = models.CharField(max_length=50)
-    apellidos = models.CharField(max_length=50)
-    nacionalidad = models.CharField(max_length=30)
-    edad = models.PositiveIntegerField(default=0)
+class Lector(Persona):
 
-    def __str__(self):
-        return self.nombres + '-' + self.apellidos
-    
+    class Meta:
+        verbose_name='Lector'    
+        verbose_name_plural='Lectores'
 
 class Prestamo(models.Model):
     lector = models.ForeignKey(Lector,on_delete=models.CASCADE)
@@ -25,6 +24,23 @@ class Prestamo(models.Model):
 
     objects = PrestamoManager()
 
+    def save(self, *args, **kwargs):
+
+        self.libro.stock = self.libro.stock -1
+        self.libro.save()
+
+
+        super(Prestamo, self).save(*args, **kwargs)
+
+        
+
     def __str__(self):
         return self.libro.titulo
+    
+#def update_libro_stock(sender, instance, **kwargs):
+ #   instance.libro.stock = instance.libro.stock + 1
+  #  instance.libro.save()
+
+
+post_delete.connect(update_libro_stock, sender=Prestamo)
 
